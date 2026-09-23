@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Szafir porządkuje oferty pracy w finansach według jawnych, zrozumiałych kryteriów.">
+    <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#123b75">
+    <title>Szafir — spokojne szukanie pracy</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23123b75' d='M32 4 58 24 47 56H17L6 24z'/%3E%3Cpath fill='%23ffffff' d='m32 13 15 12-6 20H23l-6-20z'/%3E%3Ccircle cx='32' cy='29' r='6' fill='%23e9ae4a'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="js/config.js"></script>
+    <script defer src="js/adapters.js"></script>
+    <script defer src="js/scoring.js"></script>
+    <script defer src="js/ranking.js"></script>
+    <script defer src="js/ui.js"></script>
+    <script defer src="js/app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Przejdź do głównej treści</a>
+
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Szafir — strona główna">
+        <span class="brand-mark" aria-hidden="true"><span></span></span>
+        <span>
+          <strong>Szafir</strong>
+          <small>Oferty pracy, spokojnie uporządkowane</small>
+        </span>
+      </a>
+      <button class="button button-quiet" id="open-scoring" type="button">Jak liczy Szafir?</button>
+    </header>
+
+    <main id="main-content" class="page-shell">
+      <aside class="search-panel" aria-labelledby="search-heading">
+        <div class="eyebrow">Nowa sesja</div>
+        <h1 id="search-heading">Znajdź oferty dopasowane do Ciebie</h1>
+        <p class="lead">Szafir zbiera wyniki z dostępnych źródeł i pokazuje, skąd bierze się każda ocena.</p>
+
+        <form id="search-form" novalidate>
+          <div class="field-group">
+            <label for="origin">Punkt startowy dojazdu</label>
+            <input
+              id="origin"
+              name="origin"
+              type="text"
+              list="origin-suggestions"
+              autocomplete="off"
+              placeholder="Wpisz miejsce lub wybierz propozycję"
+              required
+              aria-describedby="origin-hint origin-error"
+            >
+            <datalist id="origin-suggestions">
+              <option value="Zagłębiowska Mediateka, Sosnowiec"></option>
+              <option value="Dworzec PKP Sosnowiec Główny"></option>
+            </datalist>
+            <p class="field-hint" id="origin-hint">Adres służy tylko tej sesji. Dla proponowanych punktów pokażemy orientacyjny dojazd.</p>
+            <p class="field-error" id="origin-error" role="alert"></p>
+          </div>
+
+          <fieldset class="field-group">
+            <legend>Sposób dojazdu</legend>
+            <div class="segmented-control">
+              <label>
+                <input type="radio" name="commute-mode" value="car" checked>
+                <span>Samochód</span>
+              </label>
+              <label>
+                <input type="radio" name="commute-mode" value="walk">
+                <span>Pieszo</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <details class="profile-summary">
+            <summary>Twój profil wyszukiwania</summary>
+            <div>
+              <p><strong>Najważniejsze:</strong> lokalne oferty po polsku. Tryb zdalny jest atutem, ale nie dominuje już wyniku.</p>
+              <p><strong>Preferowane miejsca:</strong> Katowice i Sosnowiec, następnie bliska okolica.</p>
+              <p><strong>Role:</strong> AP, faktury, P2P i finanse operacyjne.</p>
+              <p><strong>Umowa:</strong> preferowana umowa o pracę. Inne oferty nadal pozostają na liście.</p>
+            </div>
+          </details>
+
+          <button class="button button-primary search-button" type="submit" id="search-button">
+            <span>Szukaj ofert</span>
+            <span aria-hidden="true">→</span>
+          </button>
+          <p class="external-search-hint">Kliknięcie pobierze oferty z dozwolonych publicznych API. Portale bez takiego dostępu pojawią się przy wynikach jako osobne linki — bez automatycznego otwierania wielu kart.</p>
+        </form>
+
+        <p class="privacy-note"><span aria-hidden="true">◇</span> Dane i reakcje nie są zapisywane po zakończeniu sesji.</p>
+      </aside>
+
+      <section class="workspace" aria-label="Wyniki wyszukiwania">
+        <div id="empty-state" class="empty-state">
+          <div class="empty-gem" aria-hidden="true">◇</div>
+          <div>
+            <h2>Tu pojawi się Twoja lista</h2>
+            <p>Wyszukiwanie rozpocznie się dopiero po wybraniu punktu startowego i kliknięciu „Szukaj ofert”.</p>
+          </div>
+        </div>
+
+        <section id="loading-panel" class="loading-panel" hidden aria-labelledby="loading-title">
+          <div class="section-heading">
+            <div>
+              <div class="eyebrow">Wyszukiwanie</div>
+              <h2 id="loading-title">Szukamy ofert w dostępnych źródłach…</h2>
+            </div>
+            <span id="progress-label" class="progress-label">0 z 2</span>
+          </div>
+          <progress id="search-progress" max="2" value="0">0 z 2</progress>
+          <ul class="source-list" id="source-list" aria-live="polite"></ul>
+          <p class="loading-note">Każde źródło działa osobno — problem z jednym nie zatrzyma pozostałych wyników.</p>
+        </section>
+
+        <section id="results-panel" hidden aria-labelledby="results-title">
+          <div class="results-header">
+            <div>
+              <div class="eyebrow">Wyniki tej sesji</div>
+              <h2 id="results-title">Oferty dla Ciebie</h2>
+              <p id="results-summary" class="results-summary"></p>
+              <p class="ranking-rule">Najpierw pokazujemy Katowice i Sosnowiec. Oferty bez polskiego języka pozostają na końcu listy.</p>
+            </div>
+            <div class="results-actions">
+              <button class="button button-quiet" type="button" id="undo-button" hidden>Cofnij</button>
+              <button class="button button-quiet" type="button" id="reset-button" hidden>Resetuj dostosowanie</button>
+            </div>
+          </div>
+
+          <div id="session-message" class="session-message" role="status" aria-live="polite" hidden></div>
+          <div id="partial-warning" class="partial-warning" hidden></div>
+          <aside id="external-search-notice" class="external-search-notice" aria-labelledby="external-search-title" hidden>
+            <div class="external-search-header">
+              <strong id="external-search-title">Dodatkowe portale — otwórz osobno</strong>
+              <p>Te serwisy nie udostępniają Szafirowi automatycznego odczytu z aplikacji statycznej. Otwórz wybraną ofertę i skopiuj jej widoczną treść, aby dodać ją ręcznie do wspólnej listy.</p>
+            </div>
+            <ul id="external-search-list" class="external-search-list"></ul>
+          </aside>
+          <aside class="manual-import-notice" aria-labelledby="manual-import-title">
+            <div>
+              <strong id="manual-import-title">Dodaj konkretną ofertę do Oceny Szafira</strong>
+              <p>Treść zostanie przeanalizowana lokalnie i zniknie po odświeżeniu strony. Szafir niczego nie wysyła ani nie zapisuje.</p>
+            </div>
+            <button id="open-import" class="button button-primary" type="button">Dodaj skopiowaną ofertę</button>
+          </aside>
+          <div id="jobs-list" class="jobs-list"></div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="scoring-dialog" aria-labelledby="scoring-title">
+      <div class="dialog-card">
+        <div class="dialog-header">
+          <div>
+            <div class="eyebrow">Jawne zasady</div>
+            <h2 id="scoring-title">Jak liczy Szafir?</h2>
+          </div>
+          <button class="icon-button" type="button" id="close-scoring" aria-label="Zamknij objaśnienie">×</button>
+        </div>
+        <p>Ocena pokazuje dopasowanie do Twoich preferencji. Nie ocenia firmy ani jakości samej oferty.</p>
+        <ol class="weights-list">
+          <li><span>Lokalizacja</span><strong>35%</strong></li>
+          <li><span>Tryb pracy i dni w biurze</span><strong>15%</strong></li>
+          <li><span>Język oferty</span><strong>20%</strong></li>
+          <li><span>Rola i obowiązki</span><strong>20%</strong></li>
+          <li><span>Tygodniowy ciężar dojazdu</span><strong>5%</strong></li>
+          <li><span>Forma umowy</span><strong>5%</strong></li>
+        </ol>
+        <div class="dialog-note">
+          <strong>Brak danych nie daje zera.</strong>
+          <p>Nieznane informacje obniżają pewność oceny, a nie sam wynik. Wynagrodzenie jest pokazywane, lecz nie wpływa na punktację.</p>
+        </div>
+        <p>Wyróżnienie <strong>Szafir poleca</strong> otrzymują wyłącznie oferty z wynikiem co najmniej 85%.</p>
+      </div>
+    </dialog>
+
+    <dialog id="import-dialog" aria-labelledby="import-title">
+      <form id="import-form" class="dialog-card import-form">
+        <div class="dialog-header">
+          <div>
+            <div class="eyebrow">Import ręczny</div>
+            <h2 id="import-title">Dodaj ofertę do wspólnej listy</h2>
+          </div>
+          <button class="icon-button" type="button" id="close-import" aria-label="Zamknij formularz importu">×</button>
+        </div>
+        <p class="import-intro">Skopiuj informacje z pojedynczego ogłoszenia. Wszystkie pola pozostają wyłącznie w pamięci tej karty.</p>
+
+        <div class="import-field import-field-wide">
+          <label for="import-url">Link do oryginalnej oferty</label>
+          <input id="import-url" name="url" type="url" inputmode="url" placeholder="https://…" required>
+        </div>
+        <div class="import-grid">
+          <div class="import-field">
+            <label for="import-title-field">Stanowisko</label>
+            <input id="import-title-field" name="title" type="text" required>
+          </div>
+          <div class="import-field">
+            <label for="import-company">Firma</label>
+            <input id="import-company" name="company" type="text" required>
+          </div>
+          <div class="import-field">
+            <label for="import-location">Lokalizacja</label>
+            <input id="import-location" name="location" type="text" placeholder="np. Katowice" required>
+          </div>
+          <div class="import-field">
+            <label for="import-work">Tryb pracy</label>
+            <select id="import-work" name="workArrangement">
+              <option value="unknown">Nie podano</option>
+              <option value="hybrid">Hybrydowa</option>
+              <option value="onsite">Stacjonarna</option>
+              <option value="remote">Zdalna</option>
+            </select>
+          </div>
+          <div class="import-field">
+            <label for="import-office-days">Dni w biurze / tydzień</label>
+            <input id="import-office-days" name="officeDaysPerWeek" type="number" min="1" max="5" inputmode="numeric" disabled>
+          </div>
+          <div class="import-field">
+            <label for="import-contract">Forma umowy</label>
+            <select id="import-contract" name="contractType">
+              <option value="unknown">Nie podano</option>
+              <option value="employment">Umowa o pracę</option>
+              <option value="b2b">B2B</option>
+              <option value="mandate">Umowa zlecenie</option>
+              <option value="temporary">Umowa tymczasowa</option>
+              <option value="other">Inna</option>
+            </select>
+          </div>
+        </div>
+        <div class="import-field import-field-wide">
+          <label for="import-description">Widoczna treść ogłoszenia</label>
+          <textarea id="import-description" name="descriptionText" rows="9" placeholder="Wklej opis, obowiązki i wymagania…" required></textarea>
+          <p class="field-hint">Szafir użyje tej treści do rozpoznania języka i rodzaju roli. Nie wklejaj danych logowania ani swoich danych osobowych.</p>
+        </div>
+        <p id="import-error" class="field-error" role="alert"></p>
+        <div class="import-actions">
+          <button id="cancel-import" class="button button-quiet" type="button">Anuluj</button>
+          <button class="button button-primary" type="submit">Policz i dodaj do listy</button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>
